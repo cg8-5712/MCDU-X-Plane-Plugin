@@ -1,0 +1,122 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: win.xpl
+          - os: macos-latest
+            platform: mac
+            artifact: mac.xpl
+          - os: ubuntu-latest
+            platform: lin
+            artifact: lin.xpl
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Prepare release package
+        shell: bash
+        run: |
+          mkdir -p release/MCDU-5712/64
+          cp dist/Release/${{ matrix.artifact }} release/MCDU-5712/64/
+
+          # Create INSTALL.txt
+          cat > release/MCDU-5712/INSTALL.txt << 'EOF'
+          ToLiss MCDU External Controller - Installation Instructions
+          ============================================================
+
+          1. Copy the entire "MCDU-5712" folder to your ToLiss aircraft's plugins directory:
+
+             Example path:
+             X-Plane 12/Aircraft/ToLiss A321/plugins/MCDU-5712/
+
+          2. Restart X-Plane
+
+          3. Access plugin menu: Plugins > ToLiss MCDU
+             - Configure UDP target IP/port (default: 192.168.1.255:7001)
+             - Enable/disable WebUI (default: enabled on port 8080)
+
+          4. WebUI access: http://localhost:8080
+
+          For more information, visit:
+          https://github.com/${{ github.repository }}
+          EOF
+
+      - name: Create archive
+        shell: bash
+        run: |
+          cd release
+          if [ "${{ matrix.platform }}" = "win" ]; then
+            7z a -tzip ../MCDU-${{ matrix.platform }}.zip MCDU-5712
+          else
+            zip -r ../MCDU-${{ matrix.platform }}.zip MCDU-5712
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MCDU-${{ matrix.platform }}
+          path: MCDU-${{ matrix.platform }}.zip
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/MCDU-win/MCDU-win.zip
+            artifacts/MCDU-mac/MCDU-mac.zip
+            artifacts/MCDU-lin/MCDU-lin.zip
+          body: |
+            ## ToLiss MCDU External Controller ${{ github.ref_name }}
+
+            ### Installation
+            1. Download the appropriate package for your platform
+            2. Extract and copy `MCDU-5712` folder to your ToLiss aircraft's `plugins` directory
+            3. Restart X-Plane
+
+            ### Features
+            - UDP broadcasting for external hardware displays
+            - WebUI access at http://localhost:8080
+            - Configurable via in-sim menu (Plugins > ToLiss MCDU)
+
+            ### Supported Platforms
+            - Windows (win.xpl)
+            - macOS (mac.xpl)
+            - Linux (lin.xpl)
+          draft: false
+          prerelease: false
