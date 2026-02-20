@@ -128,6 +128,16 @@ void MCDUUdpSend(const MCDUScreen& screen, uint8_t mcduId) {
 
     sendto(gSock, (const char*)packet, PACKET_SIZE, 0,
            (struct sockaddr*)&gTarget, sizeof(gTarget));
+
+    // 同时发送到 localhost，确保本机 WebUI 能收到
+    if (gTarget.sin_addr.s_addr != htonl(INADDR_LOOPBACK)) {
+        struct sockaddr_in lo = {};
+        lo.sin_family = AF_INET;
+        lo.sin_port = gTarget.sin_port;
+        lo.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        sendto(gSock, (const char*)packet, PACKET_SIZE, 0,
+               (struct sockaddr*)&lo, sizeof(lo));
+    }
 }
 
 void MCDUUdpShutdown() {

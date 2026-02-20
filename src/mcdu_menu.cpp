@@ -33,14 +33,11 @@ static char         gInputBuf[128];
 static int          gInputLen = 0;
 static const char*  gInputTitle = "";
 
-// ── 前向声明 ────────────────────────────────────────────────
+// 前向声明
 static void RefreshMenuLabels();
 static void OpenInputWindow(InputTarget target, const char* title, const char* initVal);
 static void CloseInputWindow();
 static void ApplyInput();
-
-// 外部：main.cpp 提供的 buffer 指针（用于 WebUI restart）
-extern MCDUScreenBuffer gScreenBuffer;
 
 // ── 菜单标签刷新 ────────────────────────────────────────────
 
@@ -74,7 +71,7 @@ static void MenuHandler(void* /*menuRef*/, void* itemRef) {
     case kMenuWebuiToggle:
         cfg.webuiEnabled = !cfg.webuiEnabled;
         if (cfg.webuiEnabled) {
-            MCDUWebUIStart(&gScreenBuffer, cfg.webuiPort);
+            MCDUWebUIStart(cfg.webuiPort, cfg.udpPort);
             XPLMDebugString("MCDU: WebUI enabled via menu.\n");
         } else {
             MCDUWebUIStop();
@@ -258,7 +255,7 @@ static void ApplyInput() {
 
             if (cfg.webuiEnabled) {
                 MCDUWebUIStop();
-                MCDUWebUIStart(&gScreenBuffer, cfg.webuiPort);
+                MCDUWebUIStart(cfg.webuiPort, cfg.udpPort);
             }
 
             char msg[128];

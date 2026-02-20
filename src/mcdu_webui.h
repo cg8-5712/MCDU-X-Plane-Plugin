@@ -1,11 +1,11 @@
 #pragma once
 
-#include "mcdu_data.h"
+#include <cstdint>
 
-// 启动 HTTP 服务器线程（在 XPluginEnable 中调用）
-// buffer: 共享屏幕缓冲区指针（生命周期由调用方管理）
-// port: HTTP 监听端口
-void MCDUWebUIStart(MCDUScreenBuffer* buffer, int port);
+// 启动 WebUI（HTTP 服务器 + UDP 监听线程）
+// httpPort: HTTP 监听端口
+// udpPort: UDP 接收端口（与 MCDUUdp 发送端口一致）
+void MCDUWebUIStart(int httpPort, uint16_t udpPort);
 
-// 停止 HTTP 服务器线程（在 XPluginDisable 中调用）
+// 停止 WebUI
 void MCDUWebUIStop();

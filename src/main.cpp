@@ -13,7 +13,6 @@
 
 // ── 全局状态 ────────────────────────────────────────────────
 
-MCDUScreenBuffer gScreenBuffer;
 static MCDUScreen       gLastScreen;      // 上一帧，用于变化检测
 static uint32_t         gFrameCounter = 0;
 static bool             gDataRefsReady = false;
@@ -42,10 +41,7 @@ static float FlightLoopCallback(float /*inElapsed*/, float /*inElapsedSim*/,
         gFrameCounter++;
         screen.frameCounter = gFrameCounter;
 
-        // 写入共享缓冲区（供 WebUI 读取）
-        gScreenBuffer.write(screen);
-
-        // UDP 发包
+        // UDP 发包（WebUI 通过 UDP 接收）
         MCDUUdpSend(screen, 1);
 
         gLastScreen = screen;
@@ -100,7 +96,7 @@ PLUGIN_API int XPluginEnable()
     MCDUConfig& cfg = MCDUConfigGet();
     if (cfg.webuiEnabled) {
         XPLMDebugString("MCDU: Starting WebUI\n");
-        MCDUWebUIStart(&gScreenBuffer, cfg.webuiPort);
+        MCDUWebUIStart(cfg.webuiPort, cfg.udpPort);
     }
     return 1;
 }
