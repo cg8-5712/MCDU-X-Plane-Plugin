@@ -212,12 +212,15 @@ static void OpenInputWindow(InputTarget target, const char* title, const char* i
 }
 
 static void CloseInputWindow() {
-    if (gInputWin) {
-        XPLMTakeKeyboardFocus(nullptr);
-        XPLMDestroyWindow(gInputWin);
-        gInputWin = nullptr;
-    }
+    if (!gInputWin) return;
+
+    // 先清空，防止 XPLMTakeKeyboardFocus 触发 losingFocus 回调重入
+    XPLMWindowID win = gInputWin;
+    gInputWin = nullptr;
     gInputTarget = kInputNone;
+
+    XPLMTakeKeyboardFocus(nullptr);
+    XPLMDestroyWindow(win);
 }
 
 static void ApplyInput() {

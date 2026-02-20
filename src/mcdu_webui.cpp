@@ -88,10 +88,23 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   }
   #screen {
     background: #050505; border: 2px solid #222; border-radius: 4px;
-    padding: 12px 16px; line-height: 1.55;
+    padding: 8px 10px;
   }
-  .row { white-space: pre; font-size: 17px; height: 1.55em; }
-  .row span { font-family: 'Consolas', 'Courier New', monospace; }
+  .row {
+    white-space: nowrap;
+    height: 25px;
+    line-height: 25px;
+    font-size: 0;
+  }
+  .row span {
+    display: inline-block;
+    width: 19px;
+    height: 25px;
+    line-height: 25px;
+    text-align: center;
+    font-family: 'Consolas', 'Courier New', monospace;
+    vertical-align: top;
+  }
   /* 颜色类 */
   .c0 { color: #e0e0e0; } /* white */
   .c1 { color: #00ff00; } /* green */
@@ -99,10 +112,10 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   .c3 { color: #ff8800; } /* amber */
   .c4 { color: #ffff00; } /* yellow */
   .c5 { color: #ff44ff; } /* magenta */
-  /* 字体类 */
-  .f0 { font-size: 17px; } /* normal */
-  .f1 { font-size: 13px; } /* small */
-  .f2 { font-size: 20px; font-weight: bold; } /* large */
+  /* 字体类 — 固定单元格尺寸，仅改变字号 */
+  .f0 { font-size: 16px; } /* normal */
+  .f1 { font-size: 12px; } /* small */
+  .f2 { font-size: 18px; font-weight: bold; } /* large */
   #status {
     text-align: center; font-size: 11px; color: #444;
     margin-top: 10px;
