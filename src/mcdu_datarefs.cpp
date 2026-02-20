@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <string>
+#include <cstdio>
 
 // ── DataRef 表 ──────────────────────────────────────────────
 // 每个 dataref 是一个 byte array (24 bytes = 24 chars per line).
@@ -126,10 +127,48 @@ static void overlayColorLayer(MCDUCell row[MCDU_COLS], const char buf[MCDU_COLS]
     }
 }
 
-// 将 "s" 层叠加 — 只标记小字体，不改变字符和颜色
+// 将 "s" 层叠加 — 携带特殊字符（需映射）并标记小字体
+// ToLiss _s 层使用自定义编码，需要转换为显示字符
+// 映射表基于实际 dataref dump 数据与真实 MCDU 显示对比
+static char translateSLayerChar(char ch) {
+    switch (ch) {
+        // 箭头 (数字 0-3)
+        case '0': return '!';   // → 前端映射 ← (左箭头)
+        case '1': return '@';   // → 前端映射 → (右箭头)
+        case '2': return '#';   // → 前端映射 ↑ (上箭头)
+        case '3': return '$';   // → 前端映射 ↓ (下箭头)
+        // 括号
+        case 'A': return '[';
+        case 'B': return ']';
+        // 输入框
+        case 'E': return '~';   // → 前端映射 □ (空心方块)
+        // 其他符号（直通前端映射）
+        case '`': return '`';   // → 前端映射 ° (度数)
+        case '*': return '*';   // → 前端映射 □
+        case '=': return '=';   // → 前端映射 ∗
+        default:  return ch;
+    }
+}
+
+// _s 层字符的隐含颜色
+static MCDUColor sLayerCharColor(char ch) {
+    switch (ch) {
+        case 'E':              return MCDUColor::AMBER;   // 输入框 □
+        case 'A': case 'B':   return MCDUColor::BLUE;    // 括号 [ ]
+        default:               return MCDUColor::WHITE;   // 箭头等
+    }
+}
+
 static void overlaySmallFont(MCDUCell row[MCDU_COLS], const char buf[MCDU_COLS]) {
     for (int c = 0; c < MCDU_COLS; ++c) {
         if (buf[c] != ' ' && buf[c] != '\0') {
+            char mapped = translateSLayerChar(buf[c]);
+            // 如果该位置还没被颜色层写过（仍是默认空格），使用隐含颜色
+            if (row[c].ch == ' ') {
+                row[c].color = sLayerCharColor(buf[c]);
+            }
+            // 否则保留颜色层已设置的颜色
+            row[c].ch   = mapped;
             row[c].font = MCDUFont::SMALL;
         }
     }
