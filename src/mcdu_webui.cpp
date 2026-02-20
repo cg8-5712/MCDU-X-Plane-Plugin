@@ -235,7 +235,21 @@ function renderScreen(data) {
     for (let i = 0; i < line.text.length; i++) {
       const cc = colorMap[line.colors[i]] || 'c0';
       const fc = fontMap[line.fonts[i]] || 'f0';
-      const ch = line.text[i] === ' ' ? '&nbsp;' : escapeHtml(line.text[i]);
+      let ch = line.text[i];
+      // ToLiss 特殊字符转义
+      if (ch === '`') ch = '\u00B0';      // ° 度数符号
+      else if (ch === '|') ch = '\u25B5'; // ▵ 上三角
+      else if (ch === '~') ch = '\u25A1'; // □ 空心方块
+      else if (ch === '!') ch = '\u2190'; // ← 左箭头
+      else if (ch === '@') ch = '\u2192'; // → 右箭头
+      else if (ch === '#') ch = '\u2191'; // ↑ 上箭头
+      else if (ch === '$') ch = '\u2193'; // ↓ 下箭头
+      else if (ch === '*') ch = '\u25A1'; // □ 空心方块
+      else if (ch === '=') ch = '\u2217'; // ∗ 星号运算符
+
+      if (ch === ' ') ch = '&nbsp;';
+      else ch = escapeHtml(ch);
+
       html += '<span class="' + cc + ' ' + fc + '">' + ch + '</span>';
     }
     html += '</div>';
