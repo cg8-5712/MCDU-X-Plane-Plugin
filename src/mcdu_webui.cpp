@@ -186,27 +186,28 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   }
   #screen {
     background: #050505; border: 2px solid #222; border-radius: 4px;
-    padding: 8px 10px;
+    padding: 8px 12px;
   }
   .row {
-    white-space: nowrap; height: 25px;
-    line-height: 25px; font-size: 0;
+    white-space: nowrap; height: 26px;
+    line-height: 26px; font-size: 0;
   }
   .row span {
-    display: inline-block; width: 19px; height: 25px;
-    line-height: 25px; text-align: center;
+    display: inline-block; width: 16px; height: 26px;
+    line-height: 26px; text-align: center;
     font-family: 'Consolas', 'Courier New', monospace;
     vertical-align: top;
+    transform: scaleX(1.15);
   }
-  .c0 { color: #e0e0e0; }
+  .c0 { color: #d0d0d0; }
   .c1 { color: #00ff00; }
-  .c2 { color: #00ccff; }
+  .c2 { color: #00d4ff; }
   .c3 { color: #ff8800; }
   .c4 { color: #ffff00; }
   .c5 { color: #ff44ff; }
-  .f0 { font-size: 16px; }
-  .f1 { font-size: 12px; }
-  .f2 { font-size: 18px; font-weight: bold; }
+  .f0 { font-size: 18px; }
+  .f1 { font-size: 10px; }
+  .f2 { font-size: 22px; font-weight: bold; }
   #status {
     text-align: center; font-size: 11px; color: #444;
     margin-top: 10px;

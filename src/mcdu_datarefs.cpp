@@ -283,8 +283,8 @@ bool MCDUDataRefsRead(MCDUScreen& out) {
 
     // ── Rows 3-12: Label 2-6 / Content 2-6 交替 ────────────
     for (int grp = 1; grp < 6; ++grp) {
-        int labelRow   = 1 + grp * 2 - 1;  // rows 3,5,7,9,11
-        int contentRow = 1 + grp * 2;       // rows 4,6,8,10,12
+        int labelRow   = 1 + grp * 2;      // rows 3,5,7,9,11
+        int contentRow = 2 + grp * 2;      // rows 4,6,8,10,12
 
         // Label N+1
         for (int i = 0; i < kNumLabelSuffixes; ++i) {
