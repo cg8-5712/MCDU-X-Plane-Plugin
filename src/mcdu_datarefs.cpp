@@ -142,10 +142,8 @@ static char translateSLayerChar(char ch) {
         case 'B': return ']';
         // 输入框
         case 'E': return '~';   // → 前端映射 □ (空心方块)
-        // 其他符号（直通前端映射）
-        case '`': return '`';   // → 前端映射 ° (度数)
-        case '*': return '*';   // → 前端映射 □
-        case '=': return '=';   // → 前端映射 ∗
+        // 其他符号
+        case '`': return '°';   // → 前端映射 ° (度数)
         default:  return ch;
     }
 }

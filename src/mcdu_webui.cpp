@@ -143,10 +143,24 @@ static std::string screenToJson(const MCDUScreen& scr) {
         js << "{\"text\":\"";
         for (int c = 0; c < MCDU_COLS; ++c) {
             char ch = scr.cells[r][c].ch;
-            if (ch == '"')       js << "\\\"";
-            else if (ch == '\\') js << "\\\\";
-            else if (ch < 0x20)  js << ' ';
-            else                 js << ch;
+            // 特殊字符 → JSON Unicode 转义
+            switch (ch) {
+                case '`': js << "\\u00B0"; break;  // °
+                case '|': js << "\\u25B5"; break;  // ▵
+                case '~': js << "\\u25A1"; break;  // □
+                case '!': js << "\\u2190"; break;  // ←
+                case '@': js << "\\u2192"; break;  // →
+                case '#': js << "\\u2191"; break;  // ↑
+                case '$': js << "\\u2193"; break;  // ↓
+                case '*': js << "\\u25A1"; break;  // □
+                case '=': js << "\\u2217"; break;  // ∗
+                case '"': js << "\\\"";    break;
+                case '\\': js << "\\\\";   break;
+                default:
+                    if (ch < 0x20) js << ' ';
+                    else           js << ch;
+                    break;
+            }
         }
         js << "\",\"colors\":\"";
         for (int c = 0; c < MCDU_COLS; ++c)
@@ -206,7 +220,8 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   .c4 { color: #ffff00; }
   .c5 { color: #ff44ff; }
   .f0 { font-size: 18px; }
-  .f1 { font-size: 10px; }
+  .f1 { font-size: 14px; }
+  .row span.f1 { width: 11px; transform: scaleX(1.0); }
   .f2 { font-size: 22px; font-weight: bold; }
   #status {
     text-align: center; font-size: 11px; color: #444;
@@ -235,21 +250,7 @@ function renderScreen(data) {
     for (let i = 0; i < line.text.length; i++) {
       const cc = colorMap[line.colors[i]] || 'c0';
       const fc = fontMap[line.fonts[i]] || 'f0';
-      let ch = line.text[i];
-      // ToLiss 特殊字符转义
-      if (ch === '`') ch = '\u00B0';      // ° 度数符号
-      else if (ch === '|') ch = '\u25B5'; // ▵ 上三角
-      else if (ch === '~') ch = '\u25A1'; // □ 空心方块
-      else if (ch === '!') ch = '\u2190'; // ← 左箭头
-      else if (ch === '@') ch = '\u2192'; // → 右箭头
-      else if (ch === '#') ch = '\u2191'; // ↑ 上箭头
-      else if (ch === '$') ch = '\u2193'; // ↓ 下箭头
-      else if (ch === '*') ch = '\u25A1'; // □ 空心方块
-      else if (ch === '=') ch = '\u2217'; // ∗ 星号运算符
-
-      if (ch === ' ') ch = '&nbsp;';
-      else ch = escapeHtml(ch);
-
+      const ch = line.text[i] === ' ' ? '&nbsp;' : escapeHtml(line.text[i]);
       html += '<span class="' + cc + ' ' + fc + '">' + ch + '</span>';
     }
     html += '</div>';
