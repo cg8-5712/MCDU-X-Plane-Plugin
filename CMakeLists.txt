@@ -31,6 +31,31 @@ include_directories(${XPLM_SDK_PATH}/CHeaders/XPLM)
 include_directories(${XPLM_SDK_PATH}/CHeaders/Widgets)
 include_directories(${XPLM_SDK_PATH}/CHeaders/Wrappers)
 
+set(BCDU_FONT_HEADER "${CMAKE_BINARY_DIR}/generated/bcdu_font.h")
+set(BCDU_FONT_EMBED_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/embed_bcdu_font.cmake")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated")
+
+set(BCDU_FONT_DEPENDS "${BCDU_FONT_EMBED_SCRIPT}")
+if(EXISTS "${CMAKE_SOURCE_DIR}/BCDU.otf")
+    list(APPEND BCDU_FONT_DEPENDS "${CMAKE_SOURCE_DIR}/BCDU.otf")
+    set(BCDU_FONT_INPUT "${CMAKE_SOURCE_DIR}/BCDU.otf")
+else()
+    set(BCDU_FONT_INPUT "")
+endif()
+
+add_custom_command(
+    OUTPUT "${BCDU_FONT_HEADER}"
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT="${BCDU_FONT_INPUT}"
+        -DOUTPUT="${BCDU_FONT_HEADER}"
+        -P "${BCDU_FONT_EMBED_SCRIPT}"
+    DEPENDS ${BCDU_FONT_DEPENDS}
+    COMMENT "Embedding BCDU font into generated header"
+    VERBATIM
+)
+
+add_custom_target(generate_bcdu_font_header DEPENDS "${BCDU_FONT_HEADER}")
+
 # 源文件
 file(GLOB SRC_FILES "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
@@ -41,6 +66,9 @@ add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 if(NOT DEFINED XPLM_VERSION)
     set(XPLM_VERSION "301" CACHE STRING "XPLM API version")
 endif()
+
+add_dependencies(${PROJECT_NAME} generate_bcdu_font_header)
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_BINARY_DIR}/generated")
 
 # 全局定义：避免 winsock.h / winsock2.h 冲突
 if (WIN32)

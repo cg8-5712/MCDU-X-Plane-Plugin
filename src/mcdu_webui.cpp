@@ -5,6 +5,7 @@
 #endif
 
 #include "mcdu_webui.h"
+#include "bcdu_font.h"
 #include "mcdu_data.h"
 #include "XPLMUtilities.h"
 #include "httplib.h"
@@ -152,8 +153,6 @@ static std::string screenToJson(const MCDUScreen& scr) {
                 case '@': js << "\\u2192"; break;  // →
                 case '#': js << "\\u2191"; break;  // ↑
                 case '$': js << "\\u2193"; break;  // ↓
-                case '*': js << "\\u25A1"; break;  // □
-                case '=': js << "\\u2217"; break;  // ∗
                 case '"': js << "\\\"";    break;
                 case '\\': js << "\\\\";   break;
                 default:
@@ -183,57 +182,141 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MCDU Display</title>
 <style>
+  :root {
+    --cell-w: 19px;
+    --cell-h: 29px;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  @font-face {
+    font-family: 'BCDU';
+    src: url('/assets/BCDU.otf') format('opentype');
+    font-display: swap;
+  }
   body {
-    background: #1a1a1a; color: #ccc;
-    font-family: 'Consolas', 'Courier New', monospace;
-    display: flex; justify-content: center; align-items: center;
     min-height: 100vh;
+    padding: 20px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, #242623 0%, #171917 100%);
+    color: #d6d8d1;
+    font-family: 'BCDU', 'Consolas', 'Courier New', monospace;
   }
   #wrapper {
-    background: #0a0a0a; border: 3px solid #333; border-radius: 12px;
-    padding: 24px 28px; box-shadow: 0 0 40px rgba(0,0,0,0.8);
+    width: min(100%, 620px);
+    padding: 24px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #474b45 0%, #222520 100%);
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow:
+      0 18px 40px rgba(0,0,0,0.42),
+      inset 0 1px 0 rgba(255,255,255,0.10);
   }
-  h1 {
-    text-align: center; font-size: 14px; color: #666;
-    margin-bottom: 12px; letter-spacing: 2px;
+  #header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    color: #8a9087;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
   }
   #screen {
-    background: #050505; border: 2px solid #222; border-radius: 4px;
-    padding: 8px 12px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #10130f 0%, #050605 100%);
+    border: 1px solid #2b2f29;
+    border-radius: 10px;
+    padding: 14px 16px 12px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.03),
+      inset 0 0 18px rgba(0,0,0,0.62),
+      0 8px 24px rgba(0,0,0,0.28);
+  }
+  #screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.035), transparent 14%, transparent 86%, rgba(255,255,255,0.025)),
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 4px);
+    mix-blend-mode: screen;
+    opacity: 0.45;
   }
   .row {
-    white-space: nowrap; height: 26px;
-    line-height: 26px; font-size: 0;
+    white-space: nowrap;
+    height: var(--cell-h);
+    line-height: var(--cell-h);
+    font-size: 0;
   }
-  .row span {
-    display: inline-block; width: 16px; height: 26px;
-    line-height: 26px; text-align: center;
-    font-family: 'Consolas', 'Courier New', monospace;
+  .cell,
+  .field-run {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     vertical-align: top;
-    transform: scaleX(1.15);
+    height: var(--cell-h);
+  }
+  .cell {
+    width: var(--cell-w);
+    font-family: 'BCDU', 'Consolas', 'Courier New', monospace;
+    font-variant-ligatures: none;
   }
   .c0 { color: #d0d0d0; }
-  .c1 { color: #00ff00; }
-  .c2 { color: #00d4ff; }
-  .c3 { color: #ff8800; }
-  .c4 { color: #ffff00; }
-  .c5 { color: #ff44ff; }
-  .f0 { font-size: 18px; }
-  .f1 { font-size: 14px; }
-  .row span.f1 { width: 11px; transform: scaleX(1.0); }
-  .f2 { font-size: 22px; font-weight: bold; }
-  #status {
-    text-align: center; font-size: 11px; color: #444;
-    margin-top: 10px;
+  .c1 { color: #74ff6a; }
+  .c2 { color: #7dd6ff; }
+  .c3 { color: #ffb24f; }
+  .c4 { color: #fff36e; }
+  .c5 { color: #ff7ff5; }
+  .f0 { font-size: 21px; }
+  .f1 { font-size: 15px; }
+  .f2 { font-size: 25px; font-weight: bold; }
+  .field-run {
+    width: calc(var(--cell-w) * var(--cells, 1));
+    height: calc(var(--cell-h) - 10px);
+    background:
+      linear-gradient(currentColor 0 0) top left / 100% 1px no-repeat,
+      linear-gradient(currentColor 0 0) bottom left / 100% 1px no-repeat,
+      linear-gradient(currentColor 0 0) top left / 1px 100% no-repeat,
+      linear-gradient(currentColor 0 0) top right / 1px 100% no-repeat,
+      repeating-linear-gradient(
+        to right,
+        transparent 0 calc(var(--cell-w) - 1px),
+        currentColor calc(var(--cell-w) - 1px) var(--cell-w)
+      );
   }
-  #status.connected { color: #0a0; }
-  #status.error { color: #a00; }
+  #status {
+    text-align: center;
+    font-size: 11px;
+    color: #8a9087;
+    margin-top: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  #status.connected { color: #b7bcb4; }
+  #status.error { color: #ff9362; }
+  @media (max-width: 640px) {
+    :root {
+      --cell-w: 15px;
+      --cell-h: 25px;
+    }
+    #wrapper {
+      padding: 16px;
+      border-radius: 18px;
+    }
+    #screen {
+      padding: 12px 12px 10px;
+    }
+    .f0 { font-size: 18px; }
+    .f1 { font-size: 13px; }
+    .f2 { font-size: 21px; }
+  }
 </style>
 </head>
 <body>
 <div id="wrapper">
-  <h1>MCDU 1</h1>
+  <div id="header"><span>MCDU 1</span><span>WEB DISPLAY</span></div>
   <div id="screen"></div>
   <div id="status">Connecting...</div>
 </div>
@@ -243,17 +326,36 @@ const fontMap  = {'0':'f0','1':'f1','2':'f2'};
 const screenEl = document.getElementById('screen');
 const statusEl = document.getElementById('status');
 
+function isAmberInputBox(line, index) {
+  return line.text[index] === '\u25A1' && (colorMap[line.colors[index]] || 'c0') === 'c3';
+}
+
+function renderLine(line) {
+  let html = '<div class="row">';
+  for (let i = 0; i < line.text.length; ) {
+    const cc = colorMap[line.colors[i]] || 'c0';
+
+    if (isAmberInputBox(line, i)) {
+      let end = i + 1;
+      while (end < line.text.length && isAmberInputBox(line, end)) end++;
+      html += '<span class="field-run ' + cc + '" style="--cells:' + (end - i) + '"></span>';
+      i = end;
+      continue;
+    }
+
+    const fc = fontMap[line.fonts[i]] || 'f0';
+    const ch = line.text[i] === ' ' ? '&nbsp;' : escapeHtml(line.text[i]);
+    html += '<span class="cell ' + cc + ' ' + fc + '">' + ch + '</span>';
+    i++;
+  }
+  html += '</div>';
+  return html;
+}
+
 function renderScreen(data) {
   let html = '';
   for (const line of data.lines) {
-    html += '<div class="row">';
-    for (let i = 0; i < line.text.length; i++) {
-      const cc = colorMap[line.colors[i]] || 'c0';
-      const fc = fontMap[line.fonts[i]] || 'f0';
-      const ch = line.text[i] === ' ' ? '&nbsp;' : escapeHtml(line.text[i]);
-      html += '<span class="' + cc + ' ' + fc + '">' + ch + '</span>';
-    }
-    html += '</div>';
+    html += renderLine(line);
   }
   screenEl.innerHTML = html;
 }
@@ -276,7 +378,7 @@ function connectSSE() {
     catch(err) { console.error('Parse error', err); }
   };
   es.onerror = () => {
-    statusEl.textContent = 'Disconnected — retrying...';
+    statusEl.textContent = 'Disconnected, retrying...';
     statusEl.className = 'error';
     es.close();
     setTimeout(connectSSE, 2000);
@@ -297,6 +399,19 @@ static void httpServerThread(int port) {
 
     gServer->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content(kHtmlPage, "text/html");
+    });
+
+    gServer->Get("/assets/BCDU.otf", [](const httplib::Request&, httplib::Response& res) {
+        if (kBcduFontSize == 0) {
+            res.status = 404;
+            res.set_content("Font asset not found.\n", "text/plain");
+            return;
+        }
+
+        res.set_header("Cache-Control", "public, max-age=86400");
+        res.set_content(reinterpret_cast<const char*>(kBcduFontData),
+                        kBcduFontSize,
+                        "font/otf");
     });
 
     gServer->Get("/api/screen", [](const httplib::Request&, httplib::Response& res) {
