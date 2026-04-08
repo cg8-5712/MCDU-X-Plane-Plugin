@@ -67,7 +67,7 @@ Output: `dist/Release/win.xpl` (or `mac.xpl`, `lin.xpl`)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+CC-BY-NC-SA 4.0 - see [LICENSE](LICENSE) file for details.
 
 ## Credits
 
