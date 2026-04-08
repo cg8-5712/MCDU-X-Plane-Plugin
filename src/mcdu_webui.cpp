@@ -183,6 +183,7 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
 <title>MCDU Display</title>
 <style>
   :root {
+    --cols: 24;
     --cell-w: 19px;
     --cell-h: 29px;
   }
@@ -202,8 +203,9 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     font-family: 'BCDU', 'Consolas', 'Courier New', monospace;
   }
   #wrapper {
-    width: min(100%, 620px);
-    padding: 24px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 18px 18px 16px;
     border-radius: 24px;
     background: linear-gradient(180deg, #474b45 0%, #222520 100%);
     border: 1px solid rgba(255,255,255,0.07);
@@ -222,12 +224,13 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     text-transform: uppercase;
   }
   #screen {
+    width: calc(var(--cols) * var(--cell-w) + 26px);
     position: relative;
     overflow: hidden;
     background: linear-gradient(180deg, #10130f 0%, #050605 100%);
     border: 1px solid #2b2f29;
     border-radius: 10px;
-    padding: 14px 16px 12px;
+    padding: 12px 12px 10px;
     box-shadow:
       inset 0 0 0 1px rgba(255,255,255,0.03),
       inset 0 0 18px rgba(0,0,0,0.62),
@@ -302,11 +305,12 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
       --cell-h: 25px;
     }
     #wrapper {
-      padding: 16px;
+      padding: 14px 14px 12px;
       border-radius: 18px;
     }
     #screen {
-      padding: 12px 12px 10px;
+      width: calc(var(--cols) * var(--cell-w) + 22px);
+      padding: 10px 10px 8px;
     }
     .f0 { font-size: 18px; }
     .f1 { font-size: 13px; }
