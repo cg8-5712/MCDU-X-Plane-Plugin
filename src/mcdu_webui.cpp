@@ -233,7 +233,8 @@ void MCDUWebUIPumpCommands() {
     }
 }
 
-static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
+static const char* kHtmlPage =
+R"HTML(<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -244,6 +245,12 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     --cols: 24;
     --cell-w: 19px;
     --cell-h: 29px;
+    --panel-blue: #50718a;
+    --panel-blue-hi: #6587a2;
+    --panel-blue-lo: #355066;
+    --panel-shadow: #1f2c39;
+    --key-top: #2b3138;
+    --key-bottom: #0b0d12;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @font-face {
@@ -268,11 +275,14 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     max-width: 100%;
     padding: 18px 18px 16px;
     border-radius: 24px;
-    background: linear-gradient(180deg, #474b45 0%, #222520 100%);
-    border: 1px solid rgba(255,255,255,0.07);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0) 14%),
+      linear-gradient(180deg, var(--panel-blue-hi) 0%, var(--panel-blue) 42%, var(--panel-blue-lo) 100%);
+    border: 1px solid rgba(12,18,26,0.55);
     box-shadow:
       0 18px 40px rgba(0,0,0,0.42),
-      inset 0 1px 0 rgba(255,255,255,0.10);
+      inset 0 1px 0 rgba(255,255,255,0.12),
+      inset 0 -20px 36px rgba(12,18,26,0.22);
   }
   #display-shell {
     display: grid;
@@ -307,6 +317,15 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     width: 100%;
     display: grid;
     gap: 10px;
+    padding: 8px 8px 6px;
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0) 18%),
+      linear-gradient(180deg, #5e809a 0%, var(--panel-blue) 48%, #3c5a71 100%);
+    border: 1px solid rgba(24,33,42,0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.12),
+      inset 0 -12px 24px rgba(16,24,32,0.24);
   }
   #top-controls {
     display: grid;
@@ -358,12 +377,13 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   }
   .mcdu-key {
     width: 100%;
-    border: 1px solid #596167;
+    border: 1px solid #141b22;
     border-radius: 8px;
-    background: linear-gradient(180deg, #242931 0%, #0b0d12 100%);
+    background: linear-gradient(180deg, var(--key-top) 0%, var(--key-bottom) 100%);
     box-shadow:
-      0 2px 0 rgba(0,0,0,0.85),
-      inset 0 1px 0 rgba(255,255,255,0.08);
+      0 2px 0 rgba(0,0,0,0.82),
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.28);
     color: #ddb29a;
     font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
     font-size: 12px;
@@ -397,28 +417,51 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     font-size: 18px;
     letter-spacing: 0;
     padding: 0;
+    border-radius: 10px;
+  }
+  #function-grid .mcdu-key,
+  #brightness-grid .mcdu-key,
+  #airport-grid .mcdu-key,
+  #arrow-grid .mcdu-key {
+    min-height: 36px;
+    border-radius: 7px;
+  }
+  #function-grid .mcdu-key,
+  #brightness-grid .mcdu-key {
+    font-size: 11px;
+    letter-spacing: 0.07em;
   }
   .mcdu-key.nav {
     font-size: 17px;
     letter-spacing: 0;
+    min-width: 0;
   }
   .mcdu-key.utility {
-    min-height: 48px;
+    min-height: 46px;
+    width: 48px;
+    min-width: 48px;
+    aspect-ratio: 1 / 1;
+    justify-self: center;
+    border-radius: 8px;
   }
   .mcdu-key.bright {
-    min-height: 46px;
+    min-height: 36px;
     min-width: 40px;
     font-size: 11px;
     padding: 4px 2px;
   }
   .mcdu-key.alpha {
-    min-width: 54px;
-    min-height: 46px;
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    aspect-ratio: 1 / 1;
+    justify-self: center;
+    border-radius: 8px;
     font-size: 16px;
     letter-spacing: 0.02em;
   }
   .mcdu-key.airport {
-    min-height: 48px;
+    min-height: 40px;
   }
   .mcdu-key.numeric {
     min-height: 40px;
@@ -434,6 +477,9 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   .mcdu-key.blank {
     cursor: default;
     color: transparent;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(43,49,56,0.55) 0%, rgba(11,13,18,0.48) 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
   #screen {
     width: calc(var(--cols) * var(--cell-w) + 26px);
@@ -560,9 +606,13 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     .mcdu-key {
       font-size: 11px;
     }
+    .mcdu-key.utility,
     .mcdu-key.alpha {
-      min-width: 0;
-      min-height: 40px;
+      width: 42px;
+      min-width: 42px;
+      min-height: 42px;
+    }
+    .mcdu-key.alpha {
       font-size: 14px;
     }
     .mcdu-key.numeric {
@@ -570,6 +620,10 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
       min-width: 36px;
       min-height: 36px;
       font-size: 16px;
+    }
+    #controls {
+      padding: 6px;
+      border-radius: 14px;
     }
     .mcdu-key.lsk {
       min-height: 38px;
@@ -580,7 +634,8 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     .f2 { font-size: 21px; }
   }
 </style>
-</head>
+)HTML"
+R"HTML(</head>
 <body>
 <div id="wrapper">
   <div id="display-shell">
@@ -620,6 +675,8 @@ const airportGridEl = document.getElementById('airport-grid');
 const arrowGridEl = document.getElementById('arrow-grid');
 const numGridEl = document.getElementById('num-grid');
 const alphaGridEl = document.getElementById('alpha-grid');
+)HTML"
+R"HTML(
 
 const functionButtons = [
   {label:'DIR', command:'AirbusFBW/MCDU1DirTo'},
@@ -686,6 +743,8 @@ const rightLskButtons = Array.from(
   {length: 6},
   (_, index) => ({label:'<', command:'AirbusFBW/MCDU1LSK' + (index + 1) + 'R', className:'lsk'})
 );
+)HTML"
+R"HTML(
 
 function renderButtonLabel(label) {
   return label.split('\\n').map((part) => '<span>' + escapeHtml(part) + '</span>').join('');

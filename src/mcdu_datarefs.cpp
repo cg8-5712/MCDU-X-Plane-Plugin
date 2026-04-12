@@ -143,7 +143,7 @@ static char translateSLayerChar(char ch) {
         // 输入框
         case 'E': return '~';   // → 前端映射 □ (空心方块)
         // 其他符号
-        case '`': return '°';   // → 前端映射 ° (度数)
+        case '`': return '`';   // Keep ASCII here; the WebUI maps this to the degree symbol.
         default:  return ch;
     }
 }
