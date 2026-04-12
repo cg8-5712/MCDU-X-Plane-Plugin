@@ -2,91 +2,88 @@ name: Build and Release
 
 on:
   push:
+    branches: [ main ]
     tags:
       - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            platform: win
-            artifact: win.xpl
-          - os: macos-latest
-            platform: mac
-            artifact: mac.xpl
+            platform_name: win
+            artifact_name: win.xpl
           - os: ubuntu-latest
-            platform: lin
-            artifact: lin.xpl
+            platform_name: lin
+            artifact_name: lin.xpl
+          - os: macos-latest
+            platform_name: mac
+            artifact_name: mac.xpl
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Setup CMake
-        uses: lukka/get-cmake@latest
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev
+
+      - name: Cache X-Plane SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: extern/XPLM-SDK
+          key: xpsdk-301-${{ runner.os }}
+
+      - name: Download X-Plane SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p extern
+          cd extern
+          curl -L -o XPSDK.zip https://developer.x-plane.com/wp-content/plugins/code-sample-generation/sdk_zip_files/XPSDK301.zip
+          unzip -q XPSDK.zip
+          mv SDK XPLM-SDK
+          rm XPSDK.zip
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        shell: bash
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DXPLM_SDK_PATH="${{ github.workspace }}/extern/XPLM-SDK"
 
       - name: Build
-        run: cmake --build build --config Release
+        run: |
+          cmake --build build --config Release
 
-      - name: Prepare release package
+      - name: Prepare artifact
         shell: bash
         run: |
-          mkdir -p release/MCDU-5712/64
-          cp dist/Release/${{ matrix.artifact }} release/MCDU-5712/64/
-
-          # Create INSTALL.txt
-          cat > release/MCDU-5712/INSTALL.txt << 'EOF'
-          ToLiss MCDU External Controller - Installation Instructions
-          ============================================================
-
-          1. Copy the entire "MCDU-5712" folder to your ToLiss aircraft's plugins directory:
-
-             Example path:
-             X-Plane 12/Aircraft/ToLiss A321/plugins/MCDU-5712/
-
-          2. Restart X-Plane
-
-          3. Access plugin menu: Plugins > ToLiss MCDU
-             - Configure UDP target IP/port (default: 192.168.1.255:7001)
-             - Enable/disable WebUI (default: enabled on port 8080)
-
-          4. WebUI access: http://localhost:8080
-
-          For more information, visit:
-          https://github.com/${{ github.repository }}
-          EOF
-
-      - name: Create archive
-        shell: bash
-        run: |
-          cd release
-          if [ "${{ matrix.platform }}" = "win" ]; then
-            7z a -tzip ../MCDU-${{ matrix.platform }}.zip MCDU-5712
-          else
-            zip -r ../MCDU-${{ matrix.platform }}.zip MCDU-5712
-          fi
+          mkdir -p artifact
+          cp "dist/Release/${{ matrix.artifact_name }}" "artifact/${{ matrix.artifact_name }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MCDU-${{ matrix.platform }}
-          path: MCDU-${{ matrix.platform }}.zip
+          name: MCDU-${{ matrix.platform_name }}
+          path: artifact/${{ matrix.artifact_name }}
 
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Download all artifacts
@@ -94,29 +91,15 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/MCDU-win/MCDU-win.zip
-            artifacts/MCDU-mac/MCDU-mac.zip
-            artifacts/MCDU-lin/MCDU-lin.zip
-          body: |
-            ## ToLiss MCDU External Controller ${{ github.ref_name }}
-
-            ### Installation
-            1. Download the appropriate package for your platform
-            2. Extract and copy `MCDU-5712` folder to your ToLiss aircraft's `plugins` directory
-            3. Restart X-Plane
-
-            ### Features
-            - UDP broadcasting for external hardware displays
-            - WebUI access at http://localhost:8080
-            - Configurable via in-sim menu (Plugins > ToLiss MCDU)
-
-            ### Supported Platforms
-            - Windows (win.xpl)
-            - macOS (mac.xpl)
-            - Linux (lin.xpl)
+            artifacts/MCDU-win/win.xpl
+            artifacts/MCDU-lin/lin.xpl
+            artifacts/MCDU-mac/mac.xpl
           draft: false
           prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
