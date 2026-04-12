@@ -268,6 +268,7 @@ R"HTML(<!DOCTYPE html>
     font-family: 'BCDU', 'Consolas', 'Courier New', monospace;
   }
   #wrapper {
+    position: relative;
     display: grid;
     gap: 14px;
     justify-items: center;
@@ -284,15 +285,29 @@ R"HTML(<!DOCTYPE html>
       inset 0 1px 0 rgba(255,255,255,0.12),
       inset 0 -20px 36px rgba(12,18,26,0.22);
   }
+  #wrapper::before {
+    content: '';
+    width: 176px;
+    height: 10px;
+    border-radius: 999px;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 16px,
+        rgba(18,28,38,0.92) 16px 34px
+      );
+    opacity: 0.92;
+  }
   #display-shell {
     display: grid;
-    grid-template-columns: 34px auto 34px;
     gap: 10px;
-    align-items: stretch;
   }
-  #center-stack {
+  #screen-shell {
+    position: relative;
     display: grid;
-    gap: 10px;
+    grid-template-columns: 52px auto 52px;
+    gap: 8px;
+    align-items: stretch;
   }
   #header {
     display: flex;
@@ -307,13 +322,14 @@ R"HTML(<!DOCTYPE html>
   }
   .lsk-stack {
     display: grid;
-    grid-template-rows: repeat(6, 1fr);
-    gap: 16px;
-    padding-top: 52px;
-    padding-bottom: 34px;
-    align-items: center;
+    grid-template-rows: repeat(6, 16px);
+    align-content: space-between;
+    justify-items: center;
+    padding-top: 30px;
+    padding-bottom: 22px;
   }
   #controls {
+    position: relative;
     width: 100%;
     display: grid;
     gap: 10px;
@@ -326,6 +342,18 @@ R"HTML(<!DOCTYPE html>
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.12),
       inset 0 -12px 24px rgba(16,24,32,0.24);
+  }
+  #controls::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 8px 8px, rgba(18,27,36,0.96) 0 3px, transparent 3.4px),
+      radial-gradient(circle at calc(100% - 8px) 8px, rgba(18,27,36,0.96) 0 3px, transparent 3.4px),
+      radial-gradient(circle at 8px calc(100% - 8px), rgba(18,27,36,0.96) 0 3px, transparent 3.4px),
+      radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), rgba(18,27,36,0.96) 0 3px, transparent 3.4px);
+    opacity: 0.9;
   }
   #top-controls {
     display: grid;
@@ -376,6 +404,8 @@ R"HTML(<!DOCTYPE html>
     min-height: 42px;
   }
   .mcdu-key {
+    position: relative;
+    overflow: hidden;
     width: 100%;
     border: 1px solid #141b22;
     border-radius: 8px;
@@ -392,10 +422,12 @@ R"HTML(<!DOCTYPE html>
     text-transform: uppercase;
     cursor: pointer;
     user-select: none;
+    white-space: nowrap;
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     padding: 6px 4px;
     transition: transform 0.05s ease, box-shadow 0.05s ease;
   }
@@ -404,6 +436,7 @@ R"HTML(<!DOCTYPE html>
     line-height: 1.05;
     text-align: center;
     pointer-events: none;
+    white-space: nowrap;
   }
   .mcdu-key:active,
   .mcdu-key.pressed {
@@ -413,11 +446,30 @@ R"HTML(<!DOCTYPE html>
       inset 0 1px 0 rgba(255,255,255,0.04);
   }
   .mcdu-key.lsk {
-    min-height: 46px;
-    font-size: 18px;
-    letter-spacing: 0;
+    width: 32px;
+    min-width: 32px;
+    min-height: 16px;
+    height: 16px;
     padding: 0;
-    border-radius: 10px;
+    justify-self: center;
+    border-radius: 999px;
+    color: transparent;
+    background: linear-gradient(180deg, #2a3036 0%, #0a0c10 100%);
+  }
+  .mcdu-key.lsk span { display: none; }
+  .mcdu-key.lsk::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: 50%;
+    height: 4px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f3cfc3 0%, #c69188 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.26),
+      0 0 0 1px rgba(33,17,18,0.4);
   }
   #function-grid .mcdu-key,
   #brightness-grid .mcdu-key,
@@ -566,18 +618,22 @@ R"HTML(<!DOCTYPE html>
       padding: 14px 14px 12px;
       border-radius: 18px;
     }
+    #wrapper::before {
+      width: 136px;
+      height: 8px;
+    }
     #screen {
       width: calc(var(--cols) * var(--cell-w) + 22px);
       padding: 10px 10px 8px;
     }
-    #display-shell {
-      grid-template-columns: 28px auto 28px;
+    #screen-shell {
+      grid-template-columns: 40px auto 40px;
       gap: 6px;
     }
     .lsk-stack {
-      gap: 12px;
-      padding-top: 44px;
-      padding-bottom: 30px;
+      grid-template-rows: repeat(6, 14px);
+      padding-top: 24px;
+      padding-bottom: 18px;
     }
     #function-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -626,8 +682,10 @@ R"HTML(<!DOCTYPE html>
       border-radius: 14px;
     }
     .mcdu-key.lsk {
-      min-height: 38px;
-      font-size: 14px;
+      width: 24px;
+      min-width: 24px;
+      min-height: 14px;
+      height: 14px;
     }
     .f0 { font-size: 18px; }
     .f1 { font-size: 13px; }
@@ -639,13 +697,13 @@ R"HTML(</head>
 <body>
 <div id="wrapper">
   <div id="display-shell">
-    <div id="lsk-left" class="lsk-stack"></div>
-    <div id="center-stack">
-      <div id="header"><span>MCDU 1</span><span>WEB CONTROL</span></div>
+    <div id="header"><span>MCDU 1</span><span>WEB CONTROL</span></div>
+    <div id="screen-shell">
+      <div id="lsk-left" class="lsk-stack"></div>
       <div id="screen"></div>
-      <div id="status">Connecting...</div>
+      <div id="lsk-right" class="lsk-stack"></div>
     </div>
-    <div id="lsk-right" class="lsk-stack"></div>
+    <div id="status">Connecting...</div>
   </div>
   <div id="controls">
     <div id="top-controls">
@@ -782,14 +840,40 @@ function sendCommand(commandName) {
     .catch((err) => console.error('Command error', err));
 }
 
+function isDirectionalArrow(ch) {
+  return ch === '\u2190' || ch === '\u2191' || ch === '\u2192' || ch === '\u2193' ||
+         ch === '<' || ch === '>';
+}
+
+function resolveColorClass(line, index) {
+  const base = colorMap[line.colors[index]] || 'c0';
+  if (base !== 'c0' || !isDirectionalArrow(line.text[index])) return base;
+
+  const neighbors = [];
+  if (line.text[index] === '\u2190' || line.text[index] === '\u2191' || line.text[index] === '<') {
+    neighbors.push(index + 1, index - 1);
+  }
+  else neighbors.push(index - 1, index + 1);
+
+  for (const neighborIndex of neighbors) {
+    if (neighborIndex < 0 || neighborIndex >= line.text.length) continue;
+    if (line.text[neighborIndex] === ' ') continue;
+
+    const neighborColor = colorMap[line.colors[neighborIndex]] || 'c0';
+    if (neighborColor !== 'c0') return neighborColor;
+  }
+
+  return base;
+}
+
 function isAmberInputBox(line, index) {
-  return line.text[index] === '\u25A1' && (colorMap[line.colors[index]] || 'c0') === 'c3';
+  return line.text[index] === '\u25A1' && resolveColorClass(line, index) === 'c3';
 }
 
 function renderLine(line) {
   let html = '<div class="row">';
   for (let i = 0; i < line.text.length; ) {
-    const cc = colorMap[line.colors[i]] || 'c0';
+    const cc = resolveColorClass(line, i);
 
     if (isAmberInputBox(line, i)) {
       let end = i + 1;

@@ -56,8 +56,8 @@ static float FlightLoopCallback(float /*inElapsed*/, float /*inElapsedSim*/,
 PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
 {
     strcpy(outName, "ToLissMCDU");
-    strcpy(outSig, "dzc.toliss.mcdu.controller");
-    strcpy(outDesc, "MCDU external controller for ToLiss Airbus (X-Plane 11/12)");
+    strcpy(outSig, "5712.cg8.toliss.mcdu.controller");
+    strcpy(outDesc, "MCDU external controller for ToLiss Airbus (X-Plane 11/12) https://github.com/cg8-5712/");
 
     XPLMDebugString("MCDU: XPluginStart\n");
 
