@@ -9,3 +9,4 @@ void MCDUWebUIStart(int httpPort, uint16_t udpPort);
 
 // 停止 WebUI
 void MCDUWebUIStop();
+void MCDUWebUIPumpCommands();

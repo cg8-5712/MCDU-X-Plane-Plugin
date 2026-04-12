@@ -22,6 +22,7 @@ static bool             gDataRefsReady = false;
 static float FlightLoopCallback(float /*inElapsed*/, float /*inElapsedSim*/,
                                  int /*inCounter*/, void* /*inRefcon*/)
 {
+    MCDUWebUIPumpCommands();
     // 1. 延迟发现 datarefs
     if (!gDataRefsReady) {
         gDataRefsReady = MCDUDataRefsDiscover();

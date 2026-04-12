@@ -24,8 +24,11 @@ typedef int SOCKET;
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <deque>
+#include <unordered_map>
 #include <string>
 #include <sstream>
+#include <cctype>
 #include <cstring>
 
 // ── UDP 包常量（与 mcdu_udp.cpp 一致）────────────────────────
@@ -44,6 +47,10 @@ static std::mutex              gMtx;
 static std::condition_variable gCV;
 static MCDUScreen              gScreen{};
 static uint32_t                gFrameSeq = 0;
+
+static std::mutex                                  gCommandMtx;
+static std::deque<std::string>                     gPendingCommands;
+static std::unordered_map<std::string, XPLMCommandRef> gCommandCache;
 
 // ── UDP 包解析 ──────────────────────────────────────────────
 
@@ -175,6 +182,57 @@ static std::string screenToJson(const MCDUScreen& scr) {
 
 // ── 内嵌 HTML 前端 ──────────────────────────────────────────
 
+static bool isAllowedCommandName(const std::string& commandName) {
+    if (commandName.empty() || commandName.size() > 64) return false;
+
+    const bool allowedPrefix =
+        commandName.rfind("AirbusFBW/MCDU1", 0) == 0 ||
+        commandName == "AirbusFBW/UndockMCDU1";
+    if (!allowedPrefix) return false;
+
+    for (unsigned char ch : commandName) {
+        if (std::isalnum(ch) || ch == '/' || ch == '_') continue;
+        return false;
+    }
+
+    return true;
+}
+
+static bool enqueueCommand(const std::string& commandName) {
+    if (!isAllowedCommandName(commandName)) return false;
+
+    std::lock_guard<std::mutex> lock(gCommandMtx);
+    if (gPendingCommands.size() >= 128) return false;
+    gPendingCommands.push_back(commandName);
+    return true;
+}
+
+void MCDUWebUIPumpCommands() {
+    std::deque<std::string> pending;
+    {
+        std::lock_guard<std::mutex> lock(gCommandMtx);
+        pending.swap(gPendingCommands);
+    }
+
+    for (const auto& commandName : pending) {
+        XPLMCommandRef commandRef = nullptr;
+        const auto it = gCommandCache.find(commandName);
+        if (it != gCommandCache.end()) {
+            commandRef = it->second;
+        } else {
+            commandRef = XPLMFindCommand(commandName.c_str());
+            gCommandCache.emplace(commandName, commandRef);
+        }
+
+        if (commandRef) {
+            XPLMCommandOnce(commandRef);
+        } else {
+            std::string msg = "MCDU WebUI: Command not found: " + commandName + "\n";
+            XPLMDebugString(msg.c_str());
+        }
+    }
+}
+
 static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -203,6 +261,9 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     font-family: 'BCDU', 'Consolas', 'Courier New', monospace;
   }
   #wrapper {
+    display: grid;
+    gap: 14px;
+    justify-items: center;
     width: fit-content;
     max-width: 100%;
     padding: 18px 18px 16px;
@@ -213,15 +274,119 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
       0 18px 40px rgba(0,0,0,0.42),
       inset 0 1px 0 rgba(255,255,255,0.10);
   }
+  #display-shell {
+    display: grid;
+    grid-template-columns: 34px auto 34px;
+    gap: 10px;
+    align-items: stretch;
+  }
+  #center-stack {
+    display: grid;
+    gap: 10px;
+  }
   #header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
     margin-bottom: 14px;
     color: #8a9087;
     font-size: 11px;
     letter-spacing: 0.24em;
     text-transform: uppercase;
+  }
+  .lsk-stack {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 16px;
+    padding-top: 52px;
+    padding-bottom: 34px;
+    align-items: center;
+  }
+  #controls {
+    width: 100%;
+    display: grid;
+    gap: 10px;
+  }
+  #function-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(54px, 1fr));
+    gap: 8px;
+  }
+  #keyboard-grid {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr) 126px;
+    gap: 10px;
+    align-items: start;
+  }
+  #nav-grid,
+  #alpha-grid,
+  #utility-grid {
+    display: grid;
+    gap: 8px;
+  }
+  #nav-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #alpha-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  #utility-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+  .mcdu-key,
+  .key-spacer {
+    min-height: 42px;
+  }
+  .mcdu-key {
+    width: 100%;
+    border: 1px solid #596167;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #242931 0%, #0b0d12 100%);
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.85),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    color: #ddb29a;
+    font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px;
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
+  }
+  .mcdu-key span {
+    display: block;
+    line-height: 1.05;
+    text-align: center;
+    pointer-events: none;
+  }
+  .mcdu-key:active,
+  .mcdu-key.pressed {
+    transform: translateY(1px);
+    box-shadow:
+      0 1px 0 rgba(0,0,0,0.9),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .mcdu-key.lsk {
+    min-height: 46px;
+    font-size: 18px;
+    letter-spacing: 0;
+    padding: 0;
+  }
+  .mcdu-key.nav {
+    font-size: 17px;
+    letter-spacing: 0;
+  }
+  .mcdu-key.utility {
+    min-height: 48px;
   }
   #screen {
     width: calc(var(--cols) * var(--cell-w) + 26px);
@@ -312,6 +477,35 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
       width: calc(var(--cols) * var(--cell-w) + 22px);
       padding: 10px 10px 8px;
     }
+    #display-shell {
+      grid-template-columns: 28px auto 28px;
+      gap: 6px;
+    }
+    .lsk-stack {
+      gap: 12px;
+      padding-top: 44px;
+      padding-bottom: 30px;
+    }
+    #function-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    #keyboard-grid {
+      grid-template-columns: 1fr;
+    }
+    #utility-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .mcdu-key,
+    .key-spacer {
+      min-height: 38px;
+    }
+    .mcdu-key {
+      font-size: 11px;
+    }
+    .mcdu-key.lsk {
+      min-height: 38px;
+      font-size: 14px;
+    }
     .f0 { font-size: 18px; }
     .f1 { font-size: 13px; }
     .f2 { font-size: 21px; }
@@ -320,15 +514,125 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
 </head>
 <body>
 <div id="wrapper">
-  <div id="header"><span>MCDU 1</span><span>WEB DISPLAY</span></div>
-  <div id="screen"></div>
-  <div id="status">Connecting...</div>
+  <div id="display-shell">
+    <div id="lsk-left" class="lsk-stack"></div>
+    <div id="center-stack">
+      <div id="header"><span>MCDU 1</span><span>WEB CONTROL</span></div>
+      <div id="screen"></div>
+      <div id="status">Connecting...</div>
+    </div>
+    <div id="lsk-right" class="lsk-stack"></div>
+  </div>
+  <div id="controls">
+    <div id="function-grid"></div>
+    <div id="keyboard-grid">
+      <div id="nav-grid"></div>
+      <div id="alpha-grid"></div>
+      <div id="utility-grid"></div>
+    </div>
+  </div>
 </div>
 <script>
 const colorMap = {'0':'c0','1':'c1','2':'c2','3':'c3','4':'c4','5':'c5'};
 const fontMap  = {'0':'f0','1':'f1','2':'f2'};
 const screenEl = document.getElementById('screen');
 const statusEl = document.getElementById('status');
+const lskLeftEl = document.getElementById('lsk-left');
+const lskRightEl = document.getElementById('lsk-right');
+const functionGridEl = document.getElementById('function-grid');
+const navGridEl = document.getElementById('nav-grid');
+const alphaGridEl = document.getElementById('alpha-grid');
+const utilityGridEl = document.getElementById('utility-grid');
+
+const functionButtons = [
+  {label:'DIR', command:'AirbusFBW/MCDU1DirTo'},
+  {label:'PROG', command:'AirbusFBW/MCDU1Prog'},
+  {label:'PERF', command:'AirbusFBW/MCDU1Perf'},
+  {label:'INIT', command:'AirbusFBW/MCDU1Init'},
+  {label:'DATA', command:'AirbusFBW/MCDU1Data'},
+  {label:'ATC\\nCOMM', command:'AirbusFBW/MCDU1ATC'},
+  {label:'BRT', command:'AirbusFBW/MCDU1KeyBright'},
+  {label:'F-PLN', command:'AirbusFBW/MCDU1Fpln'},
+  {label:'RAD\\nNAV', command:'AirbusFBW/MCDU1RadNav'},
+  {label:'FUEL\\nPRED', command:'AirbusFBW/MCDU1FuelPred'},
+  {label:'SEC\\nF-PLN', command:'AirbusFBW/MCDU1SecFpln'},
+  {label:'MCDU\\nMENU', command:'AirbusFBW/MCDU1Menu'},
+  {label:'AIR\\nPORT', command:'AirbusFBW/MCDU1Airport'},
+  {label:'DIM', command:'AirbusFBW/MCDU1KeyDim'},
+];
+
+const navButtons = [
+  null,
+  {label:'UP', command:'AirbusFBW/MCDU1SlewUp', className:'nav'},
+  null,
+  {label:'LT', command:'AirbusFBW/MCDU1SlewLeft', className:'nav'},
+  {label:'DN', command:'AirbusFBW/MCDU1SlewDown', className:'nav'},
+  {label:'RT', command:'AirbusFBW/MCDU1SlewRight', className:'nav'},
+  {label:'1', command:'AirbusFBW/MCDU1Key1'},
+  {label:'2', command:'AirbusFBW/MCDU1Key2'},
+  {label:'3', command:'AirbusFBW/MCDU1Key3'},
+  {label:'4', command:'AirbusFBW/MCDU1Key4'},
+  {label:'5', command:'AirbusFBW/MCDU1Key5'},
+  {label:'6', command:'AirbusFBW/MCDU1Key6'},
+  {label:'7', command:'AirbusFBW/MCDU1Key7'},
+  {label:'8', command:'AirbusFBW/MCDU1Key8'},
+  {label:'9', command:'AirbusFBW/MCDU1Key9'},
+  {label:'.', command:'AirbusFBW/MCDU1KeyDecimal'},
+  {label:'0', command:'AirbusFBW/MCDU1Key0'},
+  {label:'+/-', command:'AirbusFBW/MCDU1KeyPM'},
+];
+
+const alphaButtons = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  .split('')
+  .map((letter) => ({label:letter, command:'AirbusFBW/MCDU1Key' + letter}))
+  .concat([null, null, null, null]);
+
+const utilityButtons = [
+  {label:'/', command:'AirbusFBW/MCDU1KeySlash', className:'utility'},
+  {label:'SP', command:'AirbusFBW/MCDU1KeySpace', className:'utility'},
+  {label:'OVFY', command:'AirbusFBW/MCDU1KeyOverfly', className:'utility'},
+  {label:'CLR', command:'AirbusFBW/MCDU1KeyClear', className:'utility'},
+];
+
+const leftLskButtons = Array.from(
+  {length: 6},
+  (_, index) => ({label:'>', command:'AirbusFBW/MCDU1LSK' + (index + 1) + 'L', className:'lsk'})
+);
+const rightLskButtons = Array.from(
+  {length: 6},
+  (_, index) => ({label:'<', command:'AirbusFBW/MCDU1LSK' + (index + 1) + 'R', className:'lsk'})
+);
+
+function renderButtonLabel(label) {
+  return label.split('\\n').map((part) => '<span>' + escapeHtml(part) + '</span>').join('');
+}
+
+function buildButton(item) {
+  if (!item) return '<div class="key-spacer"></div>';
+  const classes = ['mcdu-key'];
+  if (item.className) classes.push(item.className);
+  return '<button type="button" class="' + classes.join(' ') + '" data-command="' +
+    item.command + '">' + renderButtonLabel(item.label) + '</button>';
+}
+
+function renderControls() {
+  lskLeftEl.innerHTML = leftLskButtons.map(buildButton).join('');
+  lskRightEl.innerHTML = rightLskButtons.map(buildButton).join('');
+  functionGridEl.innerHTML = functionButtons.map(buildButton).join('');
+  navGridEl.innerHTML = navButtons.map(buildButton).join('');
+  alphaGridEl.innerHTML = alphaButtons.map(buildButton).join('');
+  utilityGridEl.innerHTML = utilityButtons.map(buildButton).join('');
+}
+
+function pressVisual(button) {
+  button.classList.add('pressed');
+  setTimeout(() => button.classList.remove('pressed'), 120);
+}
+
+function sendCommand(commandName) {
+  fetch('/api/command?name=' + encodeURIComponent(commandName), {method: 'POST'})
+    .catch((err) => console.error('Command error', err));
+}
 
 function isAmberInputBox(line, index) {
   return line.text[index] === '\u25A1' && (colorMap[line.colors[index]] || 'c0') === 'c3';
@@ -371,6 +675,14 @@ function escapeHtml(c) {
   return c;
 }
 
+document.getElementById('wrapper').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-command]');
+  if (!button) return;
+
+  pressVisual(button);
+  sendCommand(button.dataset.command);
+});
+
 function connectSSE() {
   const es = new EventSource('/api/events');
   es.onopen = () => {
@@ -389,6 +701,7 @@ function connectSSE() {
   };
 }
 
+renderControls();
 fetch('/api/screen').then(r => r.json()).then(renderScreen).catch(() => {});
 connectSSE();
 </script>
@@ -416,6 +729,23 @@ static void httpServerThread(int port) {
         res.set_content(reinterpret_cast<const char*>(kBcduFontData),
                         kBcduFontSize,
                         "font/otf");
+    });
+
+    gServer->Post("/api/command", [](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_param("name")) {
+            res.status = 400;
+            res.set_content("{\"ok\":false,\"error\":\"missing name\"}", "application/json");
+            return;
+        }
+
+        const std::string commandName = req.get_param_value("name");
+        if (!enqueueCommand(commandName)) {
+            res.status = 400;
+            res.set_content("{\"ok\":false,\"error\":\"invalid command\"}", "application/json");
+            return;
+        }
+
+        res.set_content("{\"ok\":true}", "application/json");
     });
 
     gServer->Get("/api/screen", [](const httplib::Request&, httplib::Response& res) {
@@ -469,6 +799,11 @@ void MCDUWebUIStart(int httpPort, uint16_t udpPort) {
 
     gRunning.store(true);
     gFrameSeq = 0;
+    {
+        std::lock_guard<std::mutex> lock(gCommandMtx);
+        gPendingCommands.clear();
+    }
+    gCommandCache.clear();
 
     gUdpThread  = new std::thread(udpListenerThread, udpPort);
     gHttpThread = new std::thread(httpServerThread, httpPort);
@@ -490,6 +825,11 @@ void MCDUWebUIStop() {
     delete gHttpThread; gHttpThread = nullptr;
     delete gUdpThread;  gUdpThread  = nullptr;
     delete gServer;     gServer     = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(gCommandMtx);
+        gPendingCommands.clear();
+    }
+    gCommandCache.clear();
 
     XPLMDebugString("MCDU: WebUI stopped.\n");
 }
