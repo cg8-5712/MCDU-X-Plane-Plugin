@@ -308,32 +308,49 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     display: grid;
     gap: 10px;
   }
+  #top-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 8px;
+    align-items: start;
+  }
   #function-grid {
     display: grid;
-    grid-template-columns: repeat(7, minmax(54px, 1fr));
+    grid-template-columns: repeat(6, minmax(54px, 1fr));
+    gap: 8px;
+  }
+  #brightness-grid {
+    display: grid;
     gap: 8px;
   }
   #keyboard-grid {
     display: grid;
-    grid-template-columns: 148px minmax(0, 1fr) 126px;
+    grid-template-columns: 148px minmax(0, 1fr);
     gap: 10px;
     align-items: start;
   }
-  #nav-grid,
-  #alpha-grid,
-  #utility-grid {
+  #left-pad {
     display: grid;
     gap: 8px;
   }
-  #nav-grid {
+  #airport-grid,
+  #arrow-grid,
+  #num-grid,
+  #alpha-grid {
+    display: grid;
+    gap: 8px;
+  }
+  #airport-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #arrow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #num-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   #alpha-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-  #utility-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-content: start;
   }
   .mcdu-key,
   .key-spacer {
@@ -387,6 +404,36 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
   }
   .mcdu-key.utility {
     min-height: 48px;
+  }
+  .mcdu-key.bright {
+    min-height: 46px;
+    min-width: 40px;
+    font-size: 11px;
+    padding: 4px 2px;
+  }
+  .mcdu-key.alpha {
+    min-width: 54px;
+    min-height: 46px;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+  .mcdu-key.airport {
+    min-height: 48px;
+  }
+  .mcdu-key.numeric {
+    min-height: 40px;
+    min-width: 40px;
+    aspect-ratio: 1 / 1;
+    border-radius: 999px;
+    font-size: 18px;
+    letter-spacing: 0;
+    justify-self: center;
+    width: 40px;
+    padding: 0;
+  }
+  .mcdu-key.blank {
+    cursor: default;
+    color: transparent;
   }
   #screen {
     width: calc(var(--cols) * var(--cell-w) + 26px);
@@ -487,13 +534,24 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
       padding-bottom: 30px;
     }
     #function-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    #top-controls {
+      grid-template-columns: 1fr;
+    }
+    #brightness-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     #keyboard-grid {
       grid-template-columns: 1fr;
     }
-    #utility-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    #airport-grid,
+    #arrow-grid,
+    #num-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #num-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .mcdu-key,
     .key-spacer {
@@ -501,6 +559,17 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     }
     .mcdu-key {
       font-size: 11px;
+    }
+    .mcdu-key.alpha {
+      min-width: 0;
+      min-height: 40px;
+      font-size: 14px;
+    }
+    .mcdu-key.numeric {
+      width: 36px;
+      min-width: 36px;
+      min-height: 36px;
+      font-size: 16px;
     }
     .mcdu-key.lsk {
       min-height: 38px;
@@ -524,11 +593,17 @@ static const char* kHtmlPage = R"HTML(<!DOCTYPE html>
     <div id="lsk-right" class="lsk-stack"></div>
   </div>
   <div id="controls">
-    <div id="function-grid"></div>
+    <div id="top-controls">
+      <div id="function-grid"></div>
+      <div id="brightness-grid"></div>
+    </div>
     <div id="keyboard-grid">
-      <div id="nav-grid"></div>
+      <div id="left-pad">
+        <div id="airport-grid"></div>
+        <div id="arrow-grid"></div>
+        <div id="num-grid"></div>
+      </div>
       <div id="alpha-grid"></div>
-      <div id="utility-grid"></div>
     </div>
   </div>
 </div>
@@ -540,9 +615,11 @@ const statusEl = document.getElementById('status');
 const lskLeftEl = document.getElementById('lsk-left');
 const lskRightEl = document.getElementById('lsk-right');
 const functionGridEl = document.getElementById('function-grid');
-const navGridEl = document.getElementById('nav-grid');
+const brightnessGridEl = document.getElementById('brightness-grid');
+const airportGridEl = document.getElementById('airport-grid');
+const arrowGridEl = document.getElementById('arrow-grid');
+const numGridEl = document.getElementById('num-grid');
 const alphaGridEl = document.getElementById('alpha-grid');
-const utilityGridEl = document.getElementById('utility-grid');
 
 const functionButtons = [
   {label:'DIR', command:'AirbusFBW/MCDU1DirTo'},
@@ -550,49 +627,56 @@ const functionButtons = [
   {label:'PERF', command:'AirbusFBW/MCDU1Perf'},
   {label:'INIT', command:'AirbusFBW/MCDU1Init'},
   {label:'DATA', command:'AirbusFBW/MCDU1Data'},
-  {label:'ATC\\nCOMM', command:'AirbusFBW/MCDU1ATC'},
-  {label:'BRT', command:'AirbusFBW/MCDU1KeyBright'},
+  {label:'', className:'blank', disabled:true},
   {label:'F-PLN', command:'AirbusFBW/MCDU1Fpln'},
   {label:'RAD\\nNAV', command:'AirbusFBW/MCDU1RadNav'},
   {label:'FUEL\\nPRED', command:'AirbusFBW/MCDU1FuelPred'},
   {label:'SEC\\nF-PLN', command:'AirbusFBW/MCDU1SecFpln'},
+  {label:'ATC\\nCOMM', command:'AirbusFBW/MCDU1ATC'},
   {label:'MCDU\\nMENU', command:'AirbusFBW/MCDU1Menu'},
-  {label:'AIR\\nPORT', command:'AirbusFBW/MCDU1Airport'},
-  {label:'DIM', command:'AirbusFBW/MCDU1KeyDim'},
 ];
 
-const navButtons = [
-  null,
-  {label:'UP', command:'AirbusFBW/MCDU1SlewUp', className:'nav'},
-  null,
-  {label:'LT', command:'AirbusFBW/MCDU1SlewLeft', className:'nav'},
-  {label:'DN', command:'AirbusFBW/MCDU1SlewDown', className:'nav'},
-  {label:'RT', command:'AirbusFBW/MCDU1SlewRight', className:'nav'},
-  {label:'1', command:'AirbusFBW/MCDU1Key1'},
-  {label:'2', command:'AirbusFBW/MCDU1Key2'},
-  {label:'3', command:'AirbusFBW/MCDU1Key3'},
-  {label:'4', command:'AirbusFBW/MCDU1Key4'},
-  {label:'5', command:'AirbusFBW/MCDU1Key5'},
-  {label:'6', command:'AirbusFBW/MCDU1Key6'},
-  {label:'7', command:'AirbusFBW/MCDU1Key7'},
-  {label:'8', command:'AirbusFBW/MCDU1Key8'},
-  {label:'9', command:'AirbusFBW/MCDU1Key9'},
-  {label:'.', command:'AirbusFBW/MCDU1KeyDecimal'},
-  {label:'0', command:'AirbusFBW/MCDU1Key0'},
-  {label:'+/-', command:'AirbusFBW/MCDU1KeyPM'},
+const brightnessButtons = [
+  {label:'BRT', command:'AirbusFBW/MCDU1KeyBright', className:'bright'},
+  {label:'DIM', command:'AirbusFBW/MCDU1KeyDim', className:'bright'},
+];
+
+const airportButtons = [
+  {label:'AIR\\nPORT', command:'AirbusFBW/MCDU1Airport', className:'airport'},
+  {label:'', className:'blank', disabled:true},
+];
+
+const arrowButtons = [
+  {label:'<-', command:'AirbusFBW/MCDU1SlewLeft', className:'nav'},
+  {label:'^', command:'AirbusFBW/MCDU1SlewUp', className:'nav'},
+  {label:'->', command:'AirbusFBW/MCDU1SlewRight', className:'nav'},
+  {label:'v', command:'AirbusFBW/MCDU1SlewDown', className:'nav'},
+];
+
+const numButtons = [
+  {label:'1', command:'AirbusFBW/MCDU1Key1', className:'numeric'},
+  {label:'2', command:'AirbusFBW/MCDU1Key2', className:'numeric'},
+  {label:'3', command:'AirbusFBW/MCDU1Key3', className:'numeric'},
+  {label:'4', command:'AirbusFBW/MCDU1Key4', className:'numeric'},
+  {label:'5', command:'AirbusFBW/MCDU1Key5', className:'numeric'},
+  {label:'6', command:'AirbusFBW/MCDU1Key6', className:'numeric'},
+  {label:'7', command:'AirbusFBW/MCDU1Key7', className:'numeric'},
+  {label:'8', command:'AirbusFBW/MCDU1Key8', className:'numeric'},
+  {label:'9', command:'AirbusFBW/MCDU1Key9', className:'numeric'},
+  {label:'.', command:'AirbusFBW/MCDU1KeyDecimal', className:'numeric'},
+  {label:'0', command:'AirbusFBW/MCDU1Key0', className:'numeric'},
+  {label:'+/-', command:'AirbusFBW/MCDU1KeyPM', className:'numeric'},
 ];
 
 const alphaButtons = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   .split('')
-  .map((letter) => ({label:letter, command:'AirbusFBW/MCDU1Key' + letter}))
-  .concat([null, null, null, null]);
-
-const utilityButtons = [
-  {label:'/', command:'AirbusFBW/MCDU1KeySlash', className:'utility'},
-  {label:'SP', command:'AirbusFBW/MCDU1KeySpace', className:'utility'},
-  {label:'OVFY', command:'AirbusFBW/MCDU1KeyOverfly', className:'utility'},
-  {label:'CLR', command:'AirbusFBW/MCDU1KeyClear', className:'utility'},
-];
+  .map((letter) => ({label:letter, command:'AirbusFBW/MCDU1Key' + letter, className:'alpha'}))
+  .concat([
+    {label:'/', command:'AirbusFBW/MCDU1KeySlash', className:'utility'},
+    {label:'SP', command:'AirbusFBW/MCDU1KeySpace', className:'utility'},
+    {label:'OVFY', command:'AirbusFBW/MCDU1KeyOverfly', className:'utility'},
+    {label:'CLR', command:'AirbusFBW/MCDU1KeyClear', className:'utility'},
+  ]);
 
 const leftLskButtons = Array.from(
   {length: 6},
@@ -611,17 +695,22 @@ function buildButton(item) {
   if (!item) return '<div class="key-spacer"></div>';
   const classes = ['mcdu-key'];
   if (item.className) classes.push(item.className);
-  return '<button type="button" class="' + classes.join(' ') + '" data-command="' +
-    item.command + '">' + renderButtonLabel(item.label) + '</button>';
+  const attrs = item.disabled
+    ? ' disabled aria-hidden="true"'
+    : ' data-command="' + item.command + '"';
+  return '<button type="button" class="' + classes.join(' ') + '"' + attrs + '>' +
+    renderButtonLabel(item.label || '') + '</button>';
 }
 
 function renderControls() {
   lskLeftEl.innerHTML = leftLskButtons.map(buildButton).join('');
   lskRightEl.innerHTML = rightLskButtons.map(buildButton).join('');
   functionGridEl.innerHTML = functionButtons.map(buildButton).join('');
-  navGridEl.innerHTML = navButtons.map(buildButton).join('');
+  brightnessGridEl.innerHTML = brightnessButtons.map(buildButton).join('');
+  airportGridEl.innerHTML = airportButtons.map(buildButton).join('');
+  arrowGridEl.innerHTML = arrowButtons.map(buildButton).join('');
+  numGridEl.innerHTML = numButtons.map(buildButton).join('');
   alphaGridEl.innerHTML = alphaButtons.map(buildButton).join('');
-  utilityGridEl.innerHTML = utilityButtons.map(buildButton).join('');
 }
 
 function pressVisual(button) {

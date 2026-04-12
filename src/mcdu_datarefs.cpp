@@ -133,10 +133,10 @@ static void overlayColorLayer(MCDUCell row[MCDU_COLS], const char buf[MCDU_COLS]
 static char translateSLayerChar(char ch) {
     switch (ch) {
         // 箭头 (数字 0-3)
-        case '0': return '#';   // → JSON 映射 ↑ (上箭头)
-        case '1': return '$';   // → JSON 映射 ↓ (下箭头)
-        case '2': return '!';   // → JSON 映射 ← (左箭头)
-        case '3': return '@';   // → JSON 映射 → (右箭头)
+        case '0': return '!';   // → JSON 映射 ← (左箭头)
+        case '1': return '@';   // → JSON 映射 → (右箭头)
+        case '2': return '#';   // → JSON 映射 ↑ (上箭头)
+        case '3': return '$';   // → JSON 映射 ↓ (下箭头)
         // 括号
         case 'A': return '[';
         case 'B': return ']';
